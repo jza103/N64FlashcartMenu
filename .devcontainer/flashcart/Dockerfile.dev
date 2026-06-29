@@ -1,0 +1,17 @@
+# Derived image that pre-builds and installs libdragon into the toolchain image,
+# so building the ROM does not re-install libdragon on every run.
+#
+# Build (from repo root):
+#   docker build -t n64menu-build -f .devcontainer/flashcart/Dockerfile.sc64deployer .devcontainer/flashcart
+#   docker build -t n64menu-dev   -f .devcontainer/flashcart/Dockerfile.dev          .
+FROM n64menu-build
+
+ENV N64_INST=/opt/libdragon
+ENV PATH="/opt/libdragon/bin:${PATH}"
+
+COPY libdragon /opt/libdragon-src
+RUN cd /opt/libdragon-src && \
+    make clobber -j && \
+    make libdragon tools -j && \
+    make install tools-install -j && \
+    rm -rf /opt/libdragon-src
