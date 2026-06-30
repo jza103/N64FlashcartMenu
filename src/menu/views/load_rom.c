@@ -712,6 +712,9 @@ void view_load_rom_init (menu_t *menu) {
         //disable the attempt at loading the favorite / history
         menu->load.load_history_id = -1;
         menu->load.load_favorite_id = -1;
+        // Cancel any pending auto/quick boot so a failed load does not leave the
+        // flag set and instantly boot on the next entry to this view.
+        menu->load_pending.rom_file = false;
         // FIXME: use bookkeeping_favorite_remove() here instead of just showing an error and leaving the broken favorite / history item in place
         menu_show_error(menu, convert_error_message(err));
         return;

@@ -327,6 +327,11 @@ void view_load_disk_init (menu_t *menu) {
         menu->load.disk_slots.primary.disk_path = NULL;
     }
 
+    // A quick-boot from the browser presets load_pending.disk_file to request an
+    // immediate boot (skipping the info screen). Capture that intent, then clear
+    // the flag so every early-return error path leaves it false; it is only
+    // re-armed at the end once init has fully succeeded.
+    bool boot_now = menu->load_pending.disk_file;
     menu->load_pending.disk_file = false;
 
     if(menu->load.load_history_id != -1 || menu->load.load_favorite_id != -1) {
@@ -365,8 +370,15 @@ void view_load_disk_init (menu_t *menu) {
         if(!load_rom(menu, items[item_id].secondary_path)) {
             return;  // load_rom handles its own error messages
         }
+
+        // For a quick-boot, honor how the entry was last played: boot the disk
+        // with its companion ROM if it had one (load_rom populated rom_path).
+        if (boot_now) {
+            menu->load.combined_disk_rom = (menu->load.rom_path != NULL);
+        }
     } else {
-        // Existing browser path logic
+        // Quick-boot only applies to history/favorite entries, not raw browsing.
+        boot_now = false;
         menu->load.disk_slots.primary.disk_path = path_clone_push(menu->browser.directory, menu->browser.entry->name);
     }
 
@@ -382,6 +394,11 @@ void view_load_disk_init (menu_t *menu) {
 
     ui_components_context_menu_init(&options_context_menu);
     boxart = ui_components_boxart_init(menu->storage_prefix, menu->load.disk_slots.primary.disk_info.id, NULL, IMAGE_BOXART_FRONT);
+
+    // Init fully succeeded: re-arm the immediate boot requested by quick-boot.
+    if (boot_now) {
+        menu->load_pending.disk_file = true;
+    }
 }
 
 void view_load_disk_display (menu_t *menu, surface_t *display) {

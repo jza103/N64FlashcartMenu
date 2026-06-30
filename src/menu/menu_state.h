@@ -114,6 +114,9 @@ typedef struct {
         bool options;
         bool settings;
         bool lz_context;
+
+        /** @brief Quick-boot the most recently played ROM/disk (button held long enough) */
+        bool boot_last;
     } actions;
 
     struct {

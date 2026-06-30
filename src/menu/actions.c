@@ -5,9 +5,23 @@
 
 #define ACTIONS_REPEAT_DELAY    (8)
 
+/** @brief Frames a button must be held to trigger the "boot last played" action (~0.4s at 30 FPS). */
+#define ACTIONS_BOOT_LAST_HOLD  (12)
+
 
 static int dir_repeat_delay;
 static joypad_8way_t last_dir = JOYPAD_8WAY_NONE;
+static int boot_last_hold_frames;
+
+/**
+ * @brief Test whether the configured "boot last played" button is currently held.
+ *
+ * Kept as a single predicate so the trigger button is easy to change (or make
+ * user-configurable) later. Defaults to the Z button.
+ */
+static bool boot_last_button_held (joypad_buttons_t held) {
+    return held.z;
+}
 
 
 static void actions_clear (menu_t *menu) {
@@ -22,6 +36,7 @@ static void actions_clear (menu_t *menu) {
     menu->actions.options = false;
     menu->actions.settings = false;
     menu->actions.lz_context = false;
+    menu->actions.boot_last = false;
 }
 
 static void actions_update_direction (menu_t *menu) {
@@ -89,7 +104,29 @@ static void actions_update_direction (menu_t *menu) {
     last_dir = held_dir;
 }
 
-static void actions_update_buttons (menu_t *menu) {    
+static void actions_update_hold (menu_t *menu) {
+    joypad_buttons_t held = {0};
+
+    JOYPAD_PORT_FOREACH (i) {
+        held = joypad_get_buttons_held(i);
+        if (held.raw) {
+            break;
+        }
+    }
+
+    if (boot_last_button_held(held)) {
+        boot_last_hold_frames += 1;
+        // Fire exactly once when the hold threshold is first crossed, so the
+        // action does not repeat for as long as the button stays held.
+        if (boot_last_hold_frames == ACTIONS_BOOT_LAST_HOLD) {
+            menu->actions.boot_last = true;
+        }
+    } else {
+        boot_last_hold_frames = 0;
+    }
+}
+
+static void actions_update_buttons (menu_t *menu) {
     joypad_buttons_t pressed = {0};
 
     JOYPAD_PORT_FOREACH (i) {
@@ -125,4 +162,5 @@ void actions_update (menu_t *menu) {
     actions_clear(menu);
     actions_update_direction(menu);
     actions_update_buttons(menu);
+    actions_update_hold(menu);
 }
