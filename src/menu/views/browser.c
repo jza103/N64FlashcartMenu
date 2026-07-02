@@ -8,6 +8,7 @@
 
 #include "../cart_load.h"
 #include "../fonts.h"
+#include "../menu.h"
 #include "utils/fs.h"
 #include "views.h"
 #include "../sound.h"
@@ -489,42 +490,6 @@ static component_context_menu_t settings_context_menu = {
     }
 };
 
-/**
- * @brief Quick-boot the most recently played ROM or disk from the browser.
- *
- * Reads the top of the history list (index 0 is the most recent entry, see
- * bookkeeping.c) and boots it directly, skipping the load/info screen. The load
- * view's init resolves the path from load_history_id; setting the matching
- * load_pending flag makes its display boot immediately on the next frame
- * (the same mechanism the autoload feature uses in startup.c). No-op (with an
- * error sound) when there is no history yet.
- *
- * @param menu Pointer to the menu structure.
- * @return true if a boot was triggered, false otherwise.
- */
-static bool boot_last_played (menu_t *menu) {
-    bookkeeping_item_t *last = &menu->bookkeeping.history_items[0];
-
-    if (last->bookkeeping_type == BOOKKEEPING_TYPE_EMPTY) {
-        sound_play_effect(SFX_ERROR);
-        return false;
-    }
-
-    menu->load.load_history_id = 0;
-    menu->load.load_favorite_id = -1;
-
-    if (last->bookkeeping_type == BOOKKEEPING_TYPE_DISK) {
-        menu->next_mode = MENU_MODE_LOAD_DISK;
-        menu->load_pending.disk_file = true;
-    } else {
-        menu->next_mode = MENU_MODE_LOAD_ROM;
-        menu->load_pending.rom_file = true;
-    }
-
-    sound_play_effect(SFX_ENTER);
-    return true;
-}
-
 static void process (menu_t *menu) {
     if (ui_components_context_menu_process(menu, menu->browser.archive ? &archive_context_menu : &entry_context_menu)) {
         return;
@@ -537,7 +502,7 @@ static void process (menu_t *menu) {
     // Quick-boot last played (held button). Browser-only so it never collides
     // with the Z/L "extra info" / "load with ROM" actions in the load views.
     if (menu->actions.boot_last) {
-        boot_last_played(menu);
+        menu_boot_last_played(menu);
         return;
     }
 

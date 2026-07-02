@@ -274,6 +274,7 @@ static void load (menu_t *menu) {
     }
 
     bookkeeping_history_add(&menu->bookkeeping, menu->load.disk_slots.primary.disk_path, menu->load.rom_path, BOOKKEEPING_TYPE_DISK);
+
     menu->next_mode = MENU_MODE_BOOT;
 
     if (menu->load.combined_disk_rom) {

@@ -58,6 +58,9 @@ typedef struct {
     /** @brief Enable rumble feedback within the menu */
     bool rumble_enabled;
 
+    /** @brief Auto-boot the most recently played game each time the menu starts (hold any button during startup to reach the menu instead) */
+    bool boot_last_played_enabled;
+
 #ifdef FEATURE_AUTOLOAD_ROM_ENABLED
     /** @brief Enable the ability to bypass the menu and instantly load a ROM on power and reset button */
     bool rom_autoload_enabled;

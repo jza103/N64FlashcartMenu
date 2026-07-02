@@ -4,6 +4,7 @@
 #include "views.h"
 
 static bool show_message_reset_settings = false;
+static bool show_message_confirm_boot_last = false;
 
 static const char *format_switch (bool state) {
     switch (state) {
@@ -61,6 +62,20 @@ static void set_soundfx_enabled_type (menu_t *menu, void *arg) {
 static void set_bgm_enabled_type (menu_t *menu, void *arg) {
     menu->settings.bgm_enabled = (bool)(uintptr_t)(arg);
     settings_save(&menu->settings);
+}
+
+static void set_boot_last_played_enabled_type (menu_t *menu, void *arg) {
+    bool enable = (bool)(uintptr_t)(arg);
+
+    // Enabling changes startup behavior (the last game boots automatically),
+    // so require an explicit confirmation that spells out the hold-any-button
+    // escape. Disabling is applied immediately and needs no confirmation.
+    if (enable) {
+        show_message_confirm_boot_last = true;
+    } else {
+        menu->settings.boot_last_played_enabled = false;
+        settings_save(&menu->settings);
+    }
 }
 
 static void set_pal60_type (menu_t *menu, void *arg) {
@@ -169,6 +184,18 @@ static component_context_menu_t set_bgm_enabled_type_context_menu = {
     .list = {
         {.text = "On", .action = set_bgm_enabled_type, .arg = (void *)(uintptr_t)(true) },
         {.text = "Off", .action = set_bgm_enabled_type, .arg = (void *)(uintptr_t)(false) },
+    COMPONENT_CONTEXT_MENU_LIST_END,
+}};
+
+static int get_boot_last_played_enabled_current_selection (menu_t *menu) {
+    return menu->settings.boot_last_played_enabled ? 0 : 1;
+}
+
+static component_context_menu_t set_boot_last_played_enabled_type_context_menu = {
+    .get_default_selection = get_boot_last_played_enabled_current_selection,
+    .list = {
+        {.text = "On", .action = set_boot_last_played_enabled_type, .arg = (void *)(uintptr_t)(true) },
+        {.text = "Off", .action = set_boot_last_played_enabled_type, .arg = (void *)(uintptr_t)(false) },
     COMPONENT_CONTEXT_MENU_LIST_END,
 }};
 
@@ -288,6 +315,7 @@ static component_context_menu_t options_context_menu = { .list = {
     { .text = "Show Hidden Files", .submenu = &set_protected_entries_type_context_menu },
     { .text = "Sound Effects", .submenu = &set_soundfx_enabled_type_context_menu },
     { .text = "Background Music", .submenu = &set_bgm_enabled_type_context_menu },
+    { .text = "Auto-boot Last Played", .submenu = &set_boot_last_played_enabled_type_context_menu },
     { .text = "Use Saves Folder", .submenu = &set_use_saves_folder_type_context_menu },
     { .text = "Show Saves Folder", .submenu = &set_show_saves_folder_type_context_menu },
     { .text = "Show Save Files", .submenu = &set_show_save_files_type_context_menu },
@@ -310,6 +338,22 @@ static component_context_menu_t options_context_menu = { .list = {
 
 
 static void process (menu_t *menu) {
+    // The Auto-boot Last Played confirmation intercepts input while shown, so
+    // it must be handled before the context menu and the normal A/B actions.
+    if (show_message_confirm_boot_last) {
+        if (menu->actions.enter) {
+            menu->settings.boot_last_played_enabled = true;
+            settings_save(&menu->settings);
+            show_message_confirm_boot_last = false;
+            sound_play_effect(SFX_SETTING);
+        } else if (menu->actions.back) {
+            // Cancelled: leave the setting off.
+            show_message_confirm_boot_last = false;
+            sound_play_effect(SFX_EXIT);
+        }
+        return;
+    }
+
     if (ui_components_context_menu_process(menu, &options_context_menu)) {
         return;
     }
@@ -358,6 +402,7 @@ static void draw (menu_t *menu, surface_t *d) {
         "     Show Hidden Files : %s\n"
         "     Sound Effects     : %s\n"
         "     Background Music  : %s\n"
+        "     Auto-boot Last    : %s\n"
         "     Use Saves folder  : %s\n"
         "     Show Saves folder : %s\n"
         "     Show Save files   : %s\n"
@@ -381,6 +426,7 @@ static void draw (menu_t *menu, surface_t *d) {
         format_switch(menu->settings.show_protected_entries),
         format_switch(menu->settings.soundfx_enabled),
         format_switch(menu->settings.bgm_enabled),
+        format_switch(menu->settings.boot_last_played_enabled),
         format_switch(menu->settings.use_saves_folder),
         format_switch(menu->settings.show_saves_folder),
         format_switch(menu->settings.show_save_files),
@@ -420,6 +466,18 @@ static void draw (menu_t *menu, surface_t *d) {
         ui_components_messagebox_draw(
             "Reset settings?\n\n"
             "A: Yes, B: Back"
+        );
+    }
+
+    if (show_message_confirm_boot_last) {
+        ui_components_messagebox_draw(
+            "Auto-boot last played?\n\n"
+            "Each time the menu starts, the\n"
+            "last played game boots\n"
+            "automatically, skipping the menu.\n\n"
+            "Hold any button while the menu\n"
+            "starts to reach the menu instead.\n\n"
+            "A: Enable, B: Cancel"
         );
     }
 

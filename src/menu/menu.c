@@ -5,6 +5,7 @@
  */
 
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 
@@ -219,9 +220,32 @@ static view_t *menu_get_view (menu_mode_t id) {
     return NULL;
 }
 
+bool menu_boot_last_played (menu_t *menu) {
+    bookkeeping_item_t *last = &menu->bookkeeping.history_items[0];
+
+    if (last->bookkeeping_type == BOOKKEEPING_TYPE_EMPTY) {
+        sound_play_effect(SFX_ERROR);
+        return false;
+    }
+
+    menu->load.load_history_id = 0;
+    menu->load.load_favorite_id = -1;
+
+    if (last->bookkeeping_type == BOOKKEEPING_TYPE_DISK) {
+        menu->next_mode = MENU_MODE_LOAD_DISK;
+        menu->load_pending.disk_file = true;
+    } else {
+        menu->next_mode = MENU_MODE_LOAD_ROM;
+        menu->load_pending.rom_file = true;
+    }
+
+    sound_play_effect(SFX_ENTER);
+    return true;
+}
+
 /**
  * @brief Run the menu system.
- * 
+ *
  * @param boot_params Pointer to the boot parameters structure.
  */
 void menu_run (boot_params_t *boot_params) {
