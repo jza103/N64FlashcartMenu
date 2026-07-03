@@ -114,6 +114,13 @@ typedef struct {
         bool options;
         bool settings;
         bool lz_context;
+
+        /** @brief R held this frame; used as a "manage" modifier in the favorites view */
+        bool options_held;
+        /** @brief C-up pressed this frame (discrete button, distinct from fast-scroll) */
+        bool c_up;
+        /** @brief C-down pressed this frame (discrete button, distinct from fast-scroll) */
+        bool c_down;
     } actions;
 
     struct {

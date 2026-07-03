@@ -282,7 +282,7 @@ void bookkeeping_favorite_add(bookkeeping_t *bookkeeping, path_t *primary_path, 
 
 /**
  * @brief Remove an item from the bookkeeping favorites.
- * 
+ *
  * @param bookkeeping Pointer to the bookkeeping structure.
  * @param selection Index of the item to remove.
  */
@@ -292,4 +292,65 @@ void bookkeeping_favorite_remove(bookkeeping_t *bookkeeping, int selection) {
         bookkeeping_clear_item(&bookkeeping->favorite_items[FAVORITES_COUNT - 1], false);
         bookkeeping_save(bookkeeping);
     }
+}
+
+/**
+ * @brief Swap two adjacent favorite items in place.
+ *
+ * Uses a temporary heap copy so the two entries trade positions without going
+ * through the shared static clear/copy helpers (which would leak or double-own
+ * the path_t pointers). Callers are expected to have range-checked both indices.
+ *
+ * @param list Pointer to the list of bookkeeping items.
+ * @param a First index.
+ * @param b Second index.
+ */
+static void bookkeeping_swap_items(bookkeeping_item_t *list, int a, int b) {
+    bookkeeping_item_t temp = list[a];
+    list[a] = list[b];
+    list[b] = temp;
+}
+
+/**
+ * @brief Move a favorite item one position towards the top of the list.
+ *
+ * @param bookkeeping Pointer to the bookkeeping structure.
+ * @param selection Index of the item to move up.
+ * @return New index of the item (unchanged if the move was not possible).
+ */
+int bookkeeping_favorite_move_up(bookkeeping_t *bookkeeping, int selection) {
+    if(selection <= 0 || selection >= FAVORITES_COUNT) {
+        return selection;
+    }
+    if(bookkeeping->favorite_items[selection].bookkeeping_type == BOOKKEEPING_TYPE_EMPTY) {
+        return selection;
+    }
+
+    bookkeeping_swap_items(bookkeeping->favorite_items, selection, selection - 1);
+    bookkeeping_save(bookkeeping);
+    return selection - 1;
+}
+
+/**
+ * @brief Move a favorite item one position towards the bottom of the list.
+ *
+ * Only moves into a non-empty neighbour, so items cannot be pushed into the
+ * empty region at the end of the list (which would leave a gap).
+ *
+ * @param bookkeeping Pointer to the bookkeeping structure.
+ * @param selection Index of the item to move down.
+ * @return New index of the item (unchanged if the move was not possible).
+ */
+int bookkeeping_favorite_move_down(bookkeeping_t *bookkeeping, int selection) {
+    if(selection < 0 || selection >= FAVORITES_COUNT - 1) {
+        return selection;
+    }
+    if(bookkeeping->favorite_items[selection].bookkeeping_type == BOOKKEEPING_TYPE_EMPTY ||
+       bookkeeping->favorite_items[selection + 1].bookkeeping_type == BOOKKEEPING_TYPE_EMPTY) {
+        return selection;
+    }
+
+    bookkeeping_swap_items(bookkeeping->favorite_items, selection, selection + 1);
+    bookkeeping_save(bookkeeping);
+    return selection + 1;
 }

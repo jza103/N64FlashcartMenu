@@ -22,6 +22,10 @@ static void actions_clear (menu_t *menu) {
     menu->actions.options = false;
     menu->actions.settings = false;
     menu->actions.lz_context = false;
+
+    menu->actions.options_held = false;
+    menu->actions.c_up = false;
+    menu->actions.c_down = false;
 }
 
 static void actions_update_direction (menu_t *menu) {
@@ -36,7 +40,9 @@ static void actions_update_direction (menu_t *menu) {
         }
     }
 
-    if (fast_dir != JOYPAD_8WAY_NONE) {
+    // While R is held the C-buttons act as the favorites "manage" controls
+    // (move item up/down), so suppress their normal fast-scroll behaviour here.
+    if (fast_dir != JOYPAD_8WAY_NONE && !menu->actions.options_held) {
         held_dir = fast_dir;
         menu->actions.go_fast = true;
     }
@@ -89,7 +95,22 @@ static void actions_update_direction (menu_t *menu) {
     last_dir = held_dir;
 }
 
-static void actions_update_buttons (menu_t *menu) {    
+static void actions_update_held (menu_t *menu) {
+    joypad_buttons_t held = {0};
+
+    JOYPAD_PORT_FOREACH (i) {
+        held = joypad_get_buttons_held(i);
+        if (held.raw) {
+            break;
+        }
+    }
+
+    // R doubles as a "manage" modifier in the favorites view. Exposed as a held
+    // (not pressed) state so it can gate other button presses in the same frame.
+    menu->actions.options_held = held.r;
+}
+
+static void actions_update_buttons (menu_t *menu) {
     joypad_buttons_t pressed = {0};
 
     JOYPAD_PORT_FOREACH (i) {
@@ -98,6 +119,11 @@ static void actions_update_buttons (menu_t *menu) {
             break;
         }
     }
+
+    // Discrete C-up / C-down presses. Consumed by the favorites view for
+    // reordering; every other view uses the C-buttons as fast-scroll instead.
+    menu->actions.c_up = pressed.c_up;
+    menu->actions.c_down = pressed.c_down;
 
     if (pressed.a) {
         menu->actions.enter = true;
@@ -123,6 +149,7 @@ void actions_update (menu_t *menu) {
     joypad_poll();
 
     actions_clear(menu);
+    actions_update_held(menu);
     actions_update_direction(menu);
     actions_update_buttons(menu);
 }

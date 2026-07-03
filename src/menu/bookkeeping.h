@@ -9,7 +9,7 @@
 
 #include "path.h"
 
-#define FAVORITES_COUNT 8 /**< Maximum number of favorite items */
+#define FAVORITES_COUNT 24 /**< Maximum number of favorite items */
 #define HISTORY_COUNT 8 /**< Maximum number of history items */
 
 /** @brief Bookkeeping item types enumeration */
@@ -75,10 +75,28 @@ void bookkeeping_favorite_add(bookkeeping_t *bookkeeping, path_t *primary_path, 
 
 /**
  * @brief Remove a ROM from the favorites.
- * 
+ *
  * @param bookkeeping The bookkeeping structure.
  * @param selection The index of the favorite item to remove.
  */
 void bookkeeping_favorite_remove(bookkeeping_t *bookkeeping, int selection);
+
+/**
+ * @brief Move a favorite item one position towards the top of the list.
+ *
+ * @param bookkeeping The bookkeeping structure.
+ * @param selection The index of the favorite item to move.
+ * @return The new index of the item (unchanged if it could not move).
+ */
+int bookkeeping_favorite_move_up(bookkeeping_t *bookkeeping, int selection);
+
+/**
+ * @brief Move a favorite item one position towards the bottom of the list.
+ *
+ * @param bookkeeping The bookkeeping structure.
+ * @param selection The index of the favorite item to move.
+ * @return The new index of the item (unchanged if it could not move).
+ */
+int bookkeeping_favorite_move_down(bookkeeping_t *bookkeeping, int selection);
 
 #endif /* BOOKKEEPING_H__ */
